@@ -10,10 +10,10 @@ import (
 type ContextKey string
 
 const (
-	CapacityContextKey ContextKey = "CapacityContextKey"
+	capacityContextKey ContextKey = "CapacityContextKey"
 )
 
-type consumedCapacity struct {
+type ConsumedCapacity struct {
 	Total      float64
 	Read       float64
 	Write      float64
@@ -29,27 +29,27 @@ type consumedCapacity struct {
 	TableName  string
 }
 
-func capacityContext(ctx context.Context) (context.Context, *consumedCapacity) {
-	cc := capacityFromContext(ctx)
+func CapacityContext(ctx context.Context) (context.Context, *ConsumedCapacity) {
+	cc := CapacityFromContext(ctx)
 	if cc != nil {
 		return ctx, cc
 	}
-	cc = &consumedCapacity{}
-	return context.WithValue(ctx, CapacityContextKey, cc), cc
+	cc = &ConsumedCapacity{}
+	return context.WithValue(ctx, capacityContextKey, cc), cc
 }
 
-func capacityFromContext(ctx context.Context) *consumedCapacity {
-	cc, ok := ctx.Value(CapacityContextKey).(*consumedCapacity)
+func CapacityFromContext(ctx context.Context) *ConsumedCapacity {
+	cc, ok := ctx.Value(capacityContextKey).(*ConsumedCapacity)
 	if !ok {
 		return nil
 	}
 	return cc
 }
-func (cc *consumedCapacity) IsZero() bool {
-	return cc == nil || reflect.DeepEqual(*cc, consumedCapacity{})
+func (cc *ConsumedCapacity) IsZero() bool {
+	return cc == nil || reflect.DeepEqual(*cc, ConsumedCapacity{})
 }
 
-func addConsumedCapacity(cc *consumedCapacity, raw *types.ConsumedCapacity) {
+func AddConsumedCapacity(cc *ConsumedCapacity, raw *types.ConsumedCapacity) {
 	if cc == nil || raw == nil {
 		return
 	}

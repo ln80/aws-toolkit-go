@@ -10,18 +10,18 @@ import (
 
 func TestConsumedCapacity(t *testing.T) {
 	t.Run("zero", func(t *testing.T) {
-		cc := &consumedCapacity{}
+		cc := &ConsumedCapacity{}
 		if !cc.IsZero() {
 			t.Fatal("expect true, got false")
 		}
-		cc = &consumedCapacity{GSI: map[string]float64{"GSI1": 20.4}}
+		cc = &ConsumedCapacity{GSI: map[string]float64{"GSI1": 20.4}}
 		if cc.IsZero() {
 			t.Fatal("expect true, got false")
 		}
 	})
 
 	t.Run("add", func(t *testing.T) {
-		cc1 := consumedCapacity{
+		cc1 := ConsumedCapacity{
 			Total:      10,
 			GSI:        map[string]float64{"GSI1": 10},
 			GSIRead:    map[string]float64{},
@@ -34,7 +34,7 @@ func TestConsumedCapacity(t *testing.T) {
 			TableWrite: 0,
 		}
 		copy, _ := copystructure.Copy(cc1)
-		old := copy.(consumedCapacity)
+		old := copy.(ConsumedCapacity)
 
 		raw := &types.ConsumedCapacity{
 			CapacityUnits: aws.Float64(5),
@@ -50,7 +50,7 @@ func TestConsumedCapacity(t *testing.T) {
 				},
 			},
 		}
-		addConsumedCapacity(&cc1, raw)
+		AddConsumedCapacity(&cc1, raw)
 
 		if want, got := old.Total+*raw.CapacityUnits, cc1.Total; want != got {
 			t.Fatalf("expect %v,%v be equals", want, got)

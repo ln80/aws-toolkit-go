@@ -12,59 +12,48 @@ const (
 	red    = "\033[31m"
 )
 
-func Info(t *testing.T, format string, args ...any) {
+func doLog(t *testing.T, format string, color string, args ...any) {
 	if t != nil {
 		t.Helper()
 	}
-	args = append([]any{blue}, args...)
+	args = append([]any{color}, args...)
 	args = append(args, reset)
 	format = "%s" + format + "%s"
 	if t != nil {
 		t.Logf(format, args...)
 		return
 	}
-	log.Printf("--> "+format, args...)
+	log.Printf(format, args...)
+}
+
+func Info(t *testing.T, format string, args ...any) {
+	if t != nil {
+		t.Helper()
+	}
+	doLog(t, format, blue, args...)
 }
 
 func Warn(t *testing.T, format string, args ...any) {
 	if t != nil {
 		t.Helper()
 	}
-	args = append([]any{yellow}, args...)
-	args = append(args, reset)
-	format = "%s" + format + "%s"
-	if t != nil {
-		t.Logf(format, args...)
-		return
-	}
-	log.Printf(format, args...)
+	doLog(t, format, yellow, args...)
 }
 
 func Fail(t *testing.T, format string, args ...any) {
 	if t != nil {
 		t.Helper()
 	}
-	args = append([]any{red}, args...)
-	args = append(args, reset)
-	format = "%s" + format + "%s"
-
-	if t != nil {
-		t.Logf(format, args...)
-		return
-	}
-	log.Printf(format, args...)
+	doLog(t, format, red, args...)
 }
 
 func Fatal(t *testing.T, format string, args ...any) {
 	if t != nil {
 		t.Helper()
 	}
-	args = append([]any{red}, args...)
-	args = append(args, reset)
-	format = "%s" + format + "%s"
-
+	doLog(t, format, red, args...)
 	if t != nil {
-		t.Fatalf(format, args...)
+		t.Fatal()
 	}
-	log.Fatalf(format, args...)
+	log.Fatal()
 }
