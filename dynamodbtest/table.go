@@ -13,88 +13,35 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"github.com/ln80/aws-toolkit-go/internal/testlog"
 )
 
-func TableParamList(inputs ...*dynamodb.CreateTableInput) []*dynamodb.CreateTableInput {
+func TableList(inputs ...*dynamodb.CreateTableInput) []*dynamodb.CreateTableInput {
 	return inputs
 }
 
 type TableConfig struct {
-	Params     *dynamodb.CreateTableInput
-	ParamList  []*dynamodb.CreateTableInput
+	TableList  []*dynamodb.CreateTableInput
 	OmitSuffix bool
 	KeepTable  bool
 	MaxWait    time.Duration
 }
 
-func WithTable(t *testing.T, svc *dynamodb.Client, cfg TableConfig, fn func(dbsvc *dynamodb.Client, table string)) {
+func WithTables(t *testing.T, svc *dynamodb.Client, cfg TableConfig, fn func(dbsvc *dynamodb.Client, tableNames []string)) {
 	t.Helper()
 
 	ctx := context.Background()
 
-	params := cfg.Params
-	if params == nil {
-		fatal(t, "create table params not found %v", params)
-	}
-	if cfg.MaxWait == 0 {
-		cfg.MaxWait = time.Minute
-	}
-	tableName := aws.ToString(params.TableName)
-	if tableName == "" {
-		tableName = "test-table"
-	}
-	if !cfg.OmitSuffix || tableName == "" {
-		tableName = addSuffix(tableName)
-	}
-	params.TableName = aws.String(tableName)
-
-	if err := createTable(ctx, svc, params); err != nil {
-		fatal(t, "failed to create test table '%s': %v", tableName, err)
-	}
-	if err := waitForTable(ctx, svc, aws.ToString(params.TableName), cfg.MaxWait); err != nil {
-		fatal(t, "failed to create test table '%s': %v", tableName, err)
-	}
-
-	info(t, "dynamodb test table created: %s", tableName)
-
-	func() {
-		t.Helper()
-		defer func() {
-			t.Helper()
-			if r := recover(); r != nil {
-				fatal(t, "test panic: %v", r)
-			}
-		}()
-		fn(svc, tableName)
-	}()
-
-	if cfg.KeepTable {
-		return
-	}
-
-	if err := deleteTable(ctx, svc, tableName); err != nil {
-		fatal(t, "failed to remove test table '%s': %v", tableName, err)
-	}
-	warn(t, "dynamodb test table deleted: %s", tableName)
-}
-
-func WithSharedTables(svc *dynamodb.Client, cfg TableConfig, fn func(dbsvc *dynamodb.Client, tables []string) int) (code int) {
-	ctx := context.Background()
-
-	if len(cfg.ParamList) == 0 {
-		fatal(nil, "create table params list not found")
+	if len(cfg.TableList) == 0 {
+		testlog.Fatal(nil, "create table params list is empty")
 	}
 	if cfg.MaxWait == 0 {
 		cfg.MaxWait = time.Minute
 	}
 
-	tableNames := make([]string, len(cfg.ParamList))
-	for i, params := range cfg.ParamList {
-
+	tableNames := make([]string, len(cfg.TableList))
+	for i, params := range cfg.TableList {
 		tableName := aws.ToString(params.TableName)
-		if tableName == "" {
-			tableName = "test-table"
-		}
 		if !cfg.OmitSuffix || tableName == "" {
 			tableName = addSuffix(tableName)
 		}
@@ -103,26 +50,25 @@ func WithSharedTables(svc *dynamodb.Client, cfg TableConfig, fn func(dbsvc *dyna
 		tableNames[i] = tableName
 
 		if err := createTable(ctx, svc, params); err != nil {
-			fatal(nil, "%d: failed to create test table '%s': %v", i+1, tableName, err)
+			testlog.Fatal(t, "%d: failed to create test table '%s': %v", i+1, tableName, err)
 		}
 		if err := waitForTable(ctx, svc, aws.ToString(params.TableName), cfg.MaxWait); err != nil {
-			fatal(nil, "%d: failed to create test table '%s': %v", i+1, tableName, err)
+			testlog.Fatal(t, "%d: failed to create test table '%s': %v", i+1, tableName, err)
 		}
 
-		info(nil, "%d: dynamodb test table created: %s", i+1, tableName)
+		testlog.Info(t, "%d: dynamodb test table created: %s", i+1, tableName)
 	}
 
 	func() {
+		t.Helper()
 		defer func() {
+			t.Helper()
 			if r := recover(); r != nil {
-				fail(nil, "panic recovered %v: %v", r, string(debug.Stack()))
+				testlog.Fatal(t, "%d: test panic: %v", r, string(debug.Stack()))
 			}
 		}()
-
-		code = 2
+		fn(svc, tableNames)
 	}()
-
-	code = fn(svc, tableNames)
 
 	if cfg.KeepTable {
 		return
@@ -130,10 +76,64 @@ func WithSharedTables(svc *dynamodb.Client, cfg TableConfig, fn func(dbsvc *dyna
 
 	for i, tableName := range tableNames {
 		if err := deleteTable(ctx, svc, tableName); err != nil {
-			fail(nil, "%d: failed to remove test table '%s': %v", i+1, tableName, err)
+			testlog.Fail(t, "%d: failed to remove test table '%s': %v", i+1, tableName, err)
 			continue
 		}
-		warn(nil, "%d: dynamodb test table deleted: %s", i+1, tableName)
+		testlog.Warn(t, "%d: dynamodb test table deleted: %s", i+1, tableName)
+	}
+}
+
+func WithSharedTables(svc *dynamodb.Client, cfg TableConfig, fn func(dbsvc *dynamodb.Client, tables []string) int) (code int) {
+	ctx := context.Background()
+
+	if len(cfg.TableList) == 0 {
+		testlog.Fatal(nil, "create table params list is empty")
+	}
+	if cfg.MaxWait == 0 {
+		cfg.MaxWait = time.Minute
+	}
+
+	tableNames := make([]string, len(cfg.TableList))
+	for i, params := range cfg.TableList {
+
+		tableName := aws.ToString(params.TableName)
+		if !cfg.OmitSuffix || tableName == "" {
+			tableName = addSuffix(tableName)
+		}
+		params.TableName = aws.String(tableName)
+
+		tableNames[i] = tableName
+
+		if err := createTable(ctx, svc, params); err != nil {
+			testlog.Fatal(nil, "%d: failed to create test table '%s': %v", i+1, tableName, err)
+		}
+		if err := waitForTable(ctx, svc, aws.ToString(params.TableName), cfg.MaxWait); err != nil {
+			testlog.Fatal(nil, "%d: failed to create test table '%s': %v", i+1, tableName, err)
+		}
+
+		testlog.Info(nil, "%d: dynamodb test table created: %s", i+1, tableName)
+	}
+
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				testlog.Fatal(nil, "%d: test panic: %v: %v", r, string(debug.Stack()))
+			}
+			code = 2
+		}()
+		code = fn(svc, tableNames)
+	}()
+
+	if cfg.KeepTable {
+		return
+	}
+
+	for i, tableName := range tableNames {
+		if err := deleteTable(ctx, svc, tableName); err != nil {
+			testlog.Fail(nil, "%d: failed to remove test table '%s': %v", i+1, tableName, err)
+			continue
+		}
+		testlog.Warn(nil, "%d: dynamodb test table deleted: %s", i+1, tableName)
 	}
 
 	return

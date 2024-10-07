@@ -7,6 +7,8 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.27.41
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.39
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.36.0
+	github.com/aws/aws-sdk-go-v2/service/kms v1.37.0
+	github.com/mitchellh/copystructure v1.2.0
 )
 
 require (
@@ -22,4 +24,5 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.32.0 // indirect
 	github.com/aws/smithy-go v1.22.0 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
+	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 )

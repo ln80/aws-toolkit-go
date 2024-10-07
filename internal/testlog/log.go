@@ -1,4 +1,4 @@
-package dynamodbtest
+package testlog
 
 import (
 	"log"
@@ -12,7 +12,7 @@ const (
 	red    = "\033[31m"
 )
 
-func info(t *testing.T, format string, args ...any) {
+func Info(t *testing.T, format string, args ...any) {
 	if t != nil {
 		t.Helper()
 	}
@@ -21,11 +21,12 @@ func info(t *testing.T, format string, args ...any) {
 	format = "%s" + format + "%s"
 	if t != nil {
 		t.Logf(format, args...)
+		return
 	}
-	log.Printf(format, args...)
+	log.Printf("--> "+format, args...)
 }
 
-func warn(t *testing.T, format string, args ...any) {
+func Warn(t *testing.T, format string, args ...any) {
 	if t != nil {
 		t.Helper()
 	}
@@ -34,11 +35,12 @@ func warn(t *testing.T, format string, args ...any) {
 	format = "%s" + format + "%s"
 	if t != nil {
 		t.Logf(format, args...)
+		return
 	}
 	log.Printf(format, args...)
 }
 
-func fail(t *testing.T, format string, args ...any) {
+func Fail(t *testing.T, format string, args ...any) {
 	if t != nil {
 		t.Helper()
 	}
@@ -48,11 +50,12 @@ func fail(t *testing.T, format string, args ...any) {
 
 	if t != nil {
 		t.Logf(format, args...)
+		return
 	}
 	log.Printf(format, args...)
 }
 
-func fatal(t *testing.T, format string, args ...any) {
+func Fatal(t *testing.T, format string, args ...any) {
 	if t != nil {
 		t.Helper()
 	}

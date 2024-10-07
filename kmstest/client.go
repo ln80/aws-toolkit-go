@@ -1,4 +1,4 @@
-package dynamodbtest
+package kmstest
 
 import (
 	"context"
@@ -8,10 +8,10 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/kms"
 )
 
-func LocalClient(t *testing.T, endpoint string) *dynamodb.Client {
+func LocalClient(t *testing.T, endpoint string) *kms.Client {
 	isTestHelper := t != nil
 	if isTestHelper {
 		t.Helper()
@@ -26,7 +26,7 @@ func LocalClient(t *testing.T, endpoint string) *dynamodb.Client {
 	}
 
 	if endpoint == "" {
-		fatal(errors.New("empty dynamodb local endpoint"))
+		fatal(errors.New("empty kms local endpoint"))
 	}
 
 	cfg, err := config.LoadDefaultConfig(
@@ -39,7 +39,7 @@ func LocalClient(t *testing.T, endpoint string) *dynamodb.Client {
 		fatal(err)
 	}
 
-	dbsvc := dynamodb.NewFromConfig(cfg, func(o *dynamodb.Options) {
+	dbsvc := kms.NewFromConfig(cfg, func(o *kms.Options) {
 		o.BaseEndpoint = aws.String(endpoint)
 	})
 
