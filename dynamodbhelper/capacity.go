@@ -7,10 +7,10 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
-type ContextKey string
+type CapacityContextKey string
 
 const (
-	capacityContextKey ContextKey = "CapacityContextKey"
+	capacityContextKey CapacityContextKey = "CapacityContextKey"
 )
 
 type ConsumedCapacity struct {
