@@ -24,4 +24,4 @@ jobs:
 
       - name: Run Command
         run: |
-          echo "hello world ${TEST_VAR}"
+          echo `hello world ${TEST_VAR}`
