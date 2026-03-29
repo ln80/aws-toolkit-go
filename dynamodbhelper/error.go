@@ -26,10 +26,20 @@ func IsConditionCheckFailure(err error) bool {
 	return false
 }
 
-func IsConditionCheckFailureWithItem(err error, hashKey, rangeKey [2]string) (bool, bool) {
+type IsConditionCheckFailureWithItemConfig struct {
+	AsFoundIfEmpty bool
+}
+
+func IsConditionCheckFailureWithItem(err error, hashKey, rangeKey [2]string, opts ...func(*IsConditionCheckFailureWithItemConfig)) (bool, bool) {
+	cfg := IsConditionCheckFailureWithItemConfig{}
+	for _, opt := range opts {
+		opt(&cfg)
+	}
+
 	var cce *types.ConditionalCheckFailedException
 	if errors.As(err, &cce) {
 		item := cce.Item
+
 		if len(item) > 0 {
 			hk := item[hashKey[0]]
 			rk := item[rangeKey[0]]
@@ -52,6 +62,13 @@ func IsConditionCheckFailureWithItem(err error, hashKey, rangeKey [2]string) (bo
 			}
 		}
 		for _, item := range items {
+			if len(item) == 0 {
+				if cfg.AsFoundIfEmpty {
+					return flag, true
+				}
+				continue
+			}
+
 			hk := item[hashKey[0]]
 			rk := item[rangeKey[0]]
 			if hk.(*types.AttributeValueMemberS).Value == hashKey[1] && rk.(*types.AttributeValueMemberS).Value == rangeKey[1] {
@@ -62,4 +79,24 @@ func IsConditionCheckFailureWithItem(err error, hashKey, rangeKey [2]string) (bo
 	}
 
 	return false, false
+}
+
+func IsConditionCheckFailureWithIndex(err error) (bool, int) {
+	var cce *types.ConditionalCheckFailedException
+	if errors.As(err, &cce) {
+		return true, -1
+	}
+
+	var tce *types.TransactionCanceledException
+	if errors.As(err, &tce) {
+		for i, reason := range tce.CancellationReasons {
+
+			if *reason.Code == "ConditionalCheckFailed" {
+				return true, i
+			}
+		}
+		return true, -1
+	}
+
+	return false, -1
 }

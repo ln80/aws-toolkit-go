@@ -118,8 +118,8 @@ func WithSharedTables(svc *dynamodb.Client, cfg TableConfig, fn func(dbsvc *dyna
 		defer func() {
 			if r := recover(); r != nil {
 				testlog.Fatal(nil, "%d: test panic: %v: %v", r, string(debug.Stack()))
+				code = 2
 			}
-			code = 2
 		}()
 		code = fn(svc, tableNames)
 	}()
@@ -177,6 +177,17 @@ func waitForTable(ctx context.Context, svc *dynamodb.Client, table string, maxWa
 		}); err != nil {
 		return fmt.Errorf("timed out while waiting for table to become active: %w", err)
 	}
+	return nil
+}
+
+func CreateTable(ctx context.Context, svc *dynamodb.Client, params *dynamodb.CreateTableInput) error {
+	if err := createTable(ctx, svc, params); err != nil {
+		return fmt.Errorf("failed to create test table '%s': %v", aws.ToString(params.TableName), err)
+	}
+	if err := waitForTable(ctx, svc, aws.ToString(params.TableName), 10*time.Second); err != nil {
+		return fmt.Errorf("failed to create test table '%s': %v", aws.ToString(params.TableName), err)
+	}
+
 	return nil
 }
 

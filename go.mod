@@ -28,4 +28,5 @@ require (
 	github.com/aws/smithy-go v1.22.0 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
+	golang.org/x/text v0.26.0 // indirect
 )
