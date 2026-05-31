@@ -66,4 +66,44 @@ func TestConsumedCapacity(t *testing.T) {
 			t.Fatalf("expect %v,%v be equals", want, got)
 		}
 	})
+
+	t.Run("per-table", func(t *testing.T) {
+		cc := &ConsumedCapacity{}
+		AddConsumedCapacity(cc, &types.ConsumedCapacity{
+			TableName:         aws.String("orders"),
+			CapacityUnits:     aws.Float64(2),
+			ReadCapacityUnits: aws.Float64(2),
+		})
+		AddConsumedCapacity(cc, &types.ConsumedCapacity{
+			TableName:          aws.String("orders"),
+			CapacityUnits:      aws.Float64(1),
+			WriteCapacityUnits: aws.Float64(1),
+		})
+		AddConsumedCapacity(cc, &types.ConsumedCapacity{
+			TableName:         aws.String("users"),
+			CapacityUnits:     aws.Float64(3),
+			ReadCapacityUnits: aws.Float64(3),
+		})
+
+		if want, got := 6.0, cc.Total; want != got {
+			t.Fatalf("expect total %v, got %v", want, got)
+		}
+		orders := cc.Tables["orders"]
+		if want, got := 3.0, orders.Total; want != got {
+			t.Fatalf("expect orders total %v, got %v", want, got)
+		}
+		if want, got := 2.0, orders.Read; want != got {
+			t.Fatalf("expect orders read %v, got %v", want, got)
+		}
+		if want, got := 1.0, orders.Write; want != got {
+			t.Fatalf("expect orders write %v, got %v", want, got)
+		}
+		users := cc.Tables["users"]
+		if want, got := 3.0, users.Read; want != got {
+			t.Fatalf("expect users read %v, got %v", want, got)
+		}
+		if cc.Summary().Total != cc.Total {
+			t.Fatal("summary total mismatch")
+		}
+	})
 }

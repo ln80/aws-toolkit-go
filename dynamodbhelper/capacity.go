@@ -13,6 +13,12 @@ const (
 	capacityContextKey CapacityContextKey = "CapacityContextKey"
 )
 
+type TableCapacity struct {
+	Read  float64
+	Write float64
+	Total float64
+}
+
 type ConsumedCapacity struct {
 	Total      float64
 	Read       float64
@@ -27,6 +33,14 @@ type ConsumedCapacity struct {
 	TableRead  float64
 	TableWrite float64
 	TableName  string
+	Tables     map[string]TableCapacity
+}
+
+type CapacitySummary struct {
+	Total  float64
+	Read   float64
+	Write  float64
+	Tables map[string]TableCapacity
 }
 
 func CapacityContext(ctx context.Context) (context.Context, *ConsumedCapacity) {
@@ -47,6 +61,29 @@ func CapacityFromContext(ctx context.Context) *ConsumedCapacity {
 }
 func (cc *ConsumedCapacity) IsZero() bool {
 	return cc == nil || reflect.DeepEqual(*cc, ConsumedCapacity{})
+}
+
+func (cc *ConsumedCapacity) ByTable() map[string]TableCapacity {
+	if cc == nil || len(cc.Tables) == 0 {
+		return nil
+	}
+	out := make(map[string]TableCapacity, len(cc.Tables))
+	for name, tc := range cc.Tables {
+		out[name] = tc
+	}
+	return out
+}
+
+func (cc *ConsumedCapacity) Summary() CapacitySummary {
+	if cc == nil {
+		return CapacitySummary{}
+	}
+	return CapacitySummary{
+		Total:  cc.Total,
+		Read:   cc.Read,
+		Write:  cc.Write,
+		Tables: cc.ByTable(),
+	}
 }
 
 func AddConsumedCapacity(cc *ConsumedCapacity, raw *types.ConsumedCapacity) {
@@ -113,5 +150,23 @@ func AddConsumedCapacity(cc *ConsumedCapacity, raw *types.ConsumedCapacity) {
 	}
 	if raw.TableName != nil {
 		cc.TableName = *raw.TableName
+		addTableCapacity(cc, *raw.TableName, raw)
 	}
+}
+
+func addTableCapacity(cc *ConsumedCapacity, tableName string, raw *types.ConsumedCapacity) {
+	if cc.Tables == nil {
+		cc.Tables = make(map[string]TableCapacity)
+	}
+	tc := cc.Tables[tableName]
+	if raw.CapacityUnits != nil {
+		tc.Total += *raw.CapacityUnits
+	}
+	if raw.ReadCapacityUnits != nil {
+		tc.Read += *raw.ReadCapacityUnits
+	}
+	if raw.WriteCapacityUnits != nil {
+		tc.Write += *raw.WriteCapacityUnits
+	}
+	cc.Tables[tableName] = tc
 }

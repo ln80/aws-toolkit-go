@@ -66,14 +66,18 @@ func (s *Session) CloseTx() error {
 	return nil
 }
 
-func (s *Session) addConsumedCapacity(out any) {
-	if s.cc == nil {
+func (s *Session) addConsumedCapacity(ctx context.Context, out any) {
+	if CapacityFromContext(ctx) != nil {
+		return
+	}
+	cc := s.cc
+	if cc == nil {
 		return
 	}
 	if o, ok := out.(*dynamodb.TransactWriteItemsOutput); ok && o != nil {
-		for _, cc := range o.ConsumedCapacity {
-			cc := cc
-			AddConsumedCapacity(s.cc, &cc)
+		for _, raw := range o.ConsumedCapacity {
+			raw := raw
+			AddConsumedCapacity(cc, &raw)
 		}
 		return
 	}
@@ -97,7 +101,7 @@ func (s *Session) addConsumedCapacity(out any) {
 	default:
 		return
 	}
-	AddConsumedCapacity(s.cc, occ)
+	AddConsumedCapacity(cc, occ)
 }
 
 func (s *Session) CommitTx(ctx context.Context) (err error) {
@@ -115,23 +119,23 @@ func (s *Session) CommitTx(ctx context.Context) (err error) {
 
 	if count == 1 {
 		op := s.ops[0]
-		flush := func(op txOp) (err error) {
-			var out any
-			defer s.addConsumedCapacity(out)
-			if op.put != nil {
-				_, err = s.api.PutItem(ctx, op.put)
-				return
-			}
-			if op.update != nil {
-				_, err = s.api.UpdateItem(ctx, op.update)
-				return
-			}
-			if op.delete != nil {
-				return
-			}
+		var out any
+		defer func() { s.addConsumedCapacity(ctx, out) }()
+		if op.put != nil {
+			injectReturnConsumedCapacity(op.put)
+			out, err = s.api.PutItem(ctx, op.put)
 			return
 		}
-		err = flush(op)
+		if op.update != nil {
+			injectReturnConsumedCapacity(op.update)
+			out, err = s.api.UpdateItem(ctx, op.update)
+			return
+		}
+		if op.delete != nil {
+			injectReturnConsumedCapacity(op.delete)
+			out, err = s.api.DeleteItem(ctx, op.delete)
+			return
+		}
 		return
 	}
 
@@ -151,7 +155,7 @@ func (s *Session) CommitTx(ctx context.Context) (err error) {
 		ReturnConsumedCapacity: types.ReturnConsumedCapacityIndexes,
 	})
 
-	s.addConsumedCapacity(out)
+	s.addConsumedCapacity(ctx, out)
 
 	return
 }
@@ -163,8 +167,9 @@ func (s *Session) Put(ctx context.Context, p *dynamodb.PutItemInput) error {
 		})
 		return nil
 	}
+	injectReturnConsumedCapacity(p)
 	out, err := s.api.PutItem(ctx, p)
-	s.addConsumedCapacity(out)
+	s.addConsumedCapacity(ctx, out)
 	if err != nil {
 		return err
 	}
@@ -179,8 +184,9 @@ func (s *Session) Update(ctx context.Context, u *dynamodb.UpdateItemInput) error
 		})
 		return nil
 	}
+	injectReturnConsumedCapacity(u)
 	out, err := s.api.UpdateItem(ctx, u)
-	s.addConsumedCapacity(out)
+	s.addConsumedCapacity(ctx, out)
 	if err != nil {
 		return err
 	}
@@ -194,8 +200,9 @@ func (s *Session) Delete(ctx context.Context, d *dynamodb.DeleteItemInput) error
 		})
 		return nil
 	}
+	injectReturnConsumedCapacity(d)
 	out, err := s.api.DeleteItem(ctx, d)
-	s.addConsumedCapacity(out)
+	s.addConsumedCapacity(ctx, out)
 	if err != nil {
 		return err
 	}
